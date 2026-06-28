@@ -5,11 +5,12 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import type { FactStat, InputMode, Op } from "../engine/types";
+import { seedIntroduced } from "../engine/progression";
 
 export type { Op, InputMode, FactStat };
 
 /** Bump when the persisted shape changes; add a step to `migrate`. */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 export interface Profile {
   id: string;
@@ -38,6 +39,13 @@ export interface Session {
   endedAt: string;
   attempted: number;
   correct: number;
+  /** When set, this was a single-table focus session (Phase 2 mode). */
+  focusTable?: number;
+}
+
+/** Phase 2 progression state — which tables the engine has introduced, in order. */
+export interface ProgressState {
+  introduced: number[];
 }
 
 export interface SaveData {
@@ -46,6 +54,7 @@ export interface SaveData {
   facts: Record<string, FactStat>; // key e.g. "7x8", "56d7"
   cats: Record<string, CatProgress>;
   sessions: Session[];
+  progress: ProgressState;
 }
 
 /**
@@ -58,18 +67,24 @@ export function migrate(raw: unknown): SaveData | null {
   const data = raw as Partial<SaveData> & { schemaVersion?: number };
   if (!data.profile) return null;
 
-  let version = data.schemaVersion ?? 0;
+  const version = data.schemaVersion ?? 0;
+  const facts = data.facts ?? {};
 
-  // Future migrations slot in here, one `if (version < N)` block at a time.
-  // e.g. if (version < 2) { ...transform...; version = 2; }
-
-  version = SCHEMA_VERSION;
+  // v1 → v2: introduce Phase 2 progression. Seed the introduced-tables list from
+  // existing data so a Phase 1 child isn't re-walled. Cat entries are rebuilt to
+  // match `introduced` by the store on load (see normalizeCats), so we leave them
+  // as-is here and only ensure the shape exists.
+  let progress = data.progress;
+  if (version < 2 || !progress) {
+    progress = { introduced: seedIntroduced(facts) };
+  }
 
   return {
-    schemaVersion: version,
+    schemaVersion: SCHEMA_VERSION,
     profile: data.profile,
-    facts: data.facts ?? {},
+    facts,
     cats: data.cats ?? {},
     sessions: data.sessions ?? [],
+    progress,
   };
 }

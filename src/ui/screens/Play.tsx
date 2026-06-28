@@ -1,27 +1,44 @@
-// Play — the hero screen and the core loop. Three kind states: neutral (await),
-// correct (delight beat), gentle retry (re-enter the shown answer once). No
-// score, no penalty, no timer-as-punishment, no shaming.
+// Play — the core loop, now driven by the Phase 2 adaptive selector. The
+// companion cat follows the table currently in focus; mastering a table or
+// discovering a new cat fires a contained celebration beat. Still kind: no
+// score, no penalty, no shaming. Supports an optional single-table focus mode.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { CatStage, type CatReaction } from "../../cats/CatStage";
-import { buildFactPool } from "../../engine/facts";
-import { getNextProblem } from "../../engine/selector";
+import { findByTable, findById } from "../../cats/roster";
+import { buildFactPool, factsForTable, isCorrect } from "../../engine/facts";
+import {
+  initSelector,
+  selectNext,
+  type SelectorState,
+} from "../../engine/adaptiveSelector";
+import { computeFront, frontLead } from "../../engine/progression";
 import type { Problem } from "../../engine/types";
-import { isCorrect } from "../../engine/facts";
-import { SESSION_LENGTH } from "../../config";
+import { SESSION_LENGTH, STARTER_TABLE } from "../../config";
 import { useApp } from "../../state/AppState";
 import { ProblemDisplay, type ProblemState } from "../components/ProblemDisplay";
 import { NumberPad } from "../components/NumberPad";
 import { SessionDots } from "../components/SessionDots";
+import {
+  DiscoveryOverlay,
+  type DiscoveryKind,
+} from "../components/DiscoveryOverlay";
 
 type Phase = "await" | "correct" | "reinforce";
+interface PendingDiscovery {
+  catId: string;
+  kind: DiscoveryKind;
+}
+
+function performanceNow(): number {
+  return typeof performance !== "undefined" ? performance.now() : Date.now();
+}
 
 export function Play() {
-  const { save, starterCat, recordAttempt, recordSession, setMuted } = useApp();
+  const { save, roster, recordAttempt, recordSession, setMuted } = useApp();
   const navigate = useNavigate();
-
-  const tables = save?.profile.settings.activeTables ?? [];
-  const pool = useMemo(() => buildFactPool(tables), [tables]);
+  const location = useLocation();
+  const focusTable = (location.state as { focusTable?: number } | null)?.focusTable ?? null;
 
   const [problem, setProblem] = useState<Problem | null>(null);
   const [index, setIndex] = useState(0); // problems completed
@@ -29,41 +46,64 @@ export function Play() {
   const [phase, setPhase] = useState<Phase>("await");
   const [reaction, setReaction] = useState<CatReaction>(null);
   const [justFilled, setJustFilled] = useState(false);
+  const [discovery, setDiscovery] = useState<PendingDiscovery | null>(null);
 
+  // Latest save without stale closures (introduced tables grow mid-session).
+  const saveRef = useRef(save);
+  saveRef.current = save;
+
+  const selRef = useRef<SelectorState>(initSelector());
   const startedAt = useRef(new Date().toISOString());
   const shownAt = useRef<number>(performanceNow());
   const correctCount = useRef(0);
-  const lastKey = useRef<string | null>(null);
+  const pendingRef = useRef<PendingDiscovery[]>([]);
   const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const muted = save?.profile.settings.muted ?? false;
-  const catName = starterCat?.shortName ?? "Your cat";
-  const accentStyle = starterCat
-    ? ({ ["--cat-accent" as string]: starterCat.accent } as React.CSSProperties)
+
+  // The companion cat follows the table in focus — this is what makes the cat
+  // match the practice (the Phase 1 mismatch is gone).
+  const displayTable = focusTable ?? (save ? frontLead(save.progress.introduced, save.facts) : STARTER_TABLE);
+  const companion = useMemo(
+    () => findByTable(roster, displayTable) ?? null,
+    [roster, displayTable],
+  );
+  const catName = companion?.shortName ?? "Your cat";
+  const accentStyle = companion
+    ? ({ ["--cat-accent" as string]: companion.accent } as React.CSSProperties)
     : undefined;
 
-  // Seed the first problem.
+  /** Build the selection inputs from the freshest save (or the focus table). */
+  const pickNext = useCallback((): Problem => {
+    const s = saveRef.current!;
+    const pool = focusTable != null ? factsForTable(focusTable) : buildFactPool(s.progress.introduced);
+    const front = new Set(focusTable != null ? [focusTable] : computeFront(s.progress.introduced, s.facts));
+    const { problem: next, state } = selectNext({ pool, front, stats: s.facts, state: selRef.current });
+    selRef.current = state;
+    return next;
+  }, [focusTable]);
+
+  // Seed the first problem once.
   useEffect(() => {
-    if (pool.length === 0) return;
-    const first = getNextProblem(pool, null);
-    lastKey.current = first.fact.key;
-    setProblem(first);
+    if (!saveRef.current) return;
+    setProblem(pickNext());
     shownAt.current = performanceNow();
     return () => {
       if (advanceTimer.current) clearTimeout(advanceTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pool]);
+  }, []);
 
   const goNext = useCallback(() => {
+    setDiscovery(null);
     const completed = index + 1;
     if (completed >= SESSION_LENGTH) {
-      // End the session, write the record, hand off to the summary.
       recordSession({
         startedAt: startedAt.current,
         endedAt: new Date().toISOString(),
         attempted: SESSION_LENGTH,
         correct: correctCount.current,
+        ...(focusTable != null ? { focusTable } : {}),
       });
       navigate("/summary", {
         replace: true,
@@ -71,16 +111,21 @@ export function Play() {
       });
       return;
     }
-    const next = getNextProblem(pool, lastKey.current);
-    lastKey.current = next.fact.key;
-    setProblem(next);
+    setProblem(pickNext());
     setIndex(completed);
     setEntry("");
     setPhase("await");
     setReaction(null);
     setJustFilled(false);
     shownAt.current = performanceNow();
-  }, [index, navigate, pool, recordSession]);
+  }, [index, navigate, pickNext, recordSession, focusTable]);
+
+  /** Drain any queued discovery beats before advancing to the next problem. */
+  const advance = useCallback(() => {
+    const ev = pendingRef.current.shift();
+    if (ev) setDiscovery(ev);
+    else goNext();
+  }, [goNext]);
 
   const submit = useCallback(() => {
     if (!problem || entry.length === 0) return;
@@ -88,31 +133,34 @@ export function Play() {
 
     if (phase === "reinforce") {
       // Reinforcement: only the shown, correct answer advances. No new record.
-      if (isCorrect(problem.fact, value)) {
-        goNext();
-      } else {
-        setEntry(""); // gently clear; the answer is on screen to copy
-      }
+      if (isCorrect(problem.fact, value)) advance();
+      else setEntry("");
       return;
     }
 
-    // First attempt — this is the one we record.
+    // First attempt — the recorded one.
     const ms = Math.round(performanceNow() - shownAt.current);
     const right = isCorrect(problem.fact, value);
-    recordAttempt({ fact: problem.fact, correct: right, ms, now: new Date().toISOString() });
+    const { events } = recordAttempt({ fact: problem.fact, correct: right, ms, now: new Date().toISOString() });
+
+    // Queue any discovery / level-up beats this attempt produced.
+    pendingRef.current = [
+      ...events.newCats.map((catId) => ({ catId, kind: "found" as const })),
+      ...events.masteredCats.map((catId) => ({ catId, kind: "mastered" as const })),
+    ];
 
     if (right) {
       correctCount.current += 1;
       setPhase("correct");
       setReaction("correct");
       setJustFilled(true);
-      advanceTimer.current = setTimeout(goNext, 1050);
+      advanceTimer.current = setTimeout(advance, 1050);
     } else {
       setPhase("reinforce");
       setReaction("incorrect");
       setEntry("");
     }
-  }, [entry, goNext, phase, problem, recordAttempt]);
+  }, [advance, entry, phase, problem, recordAttempt]);
 
   if (!problem) {
     return (
@@ -125,7 +173,7 @@ export function Play() {
   const problemState: ProblemState =
     phase === "correct" ? "correct" : phase === "reinforce" ? "retry" : "neutral";
   const catMood = phase === "correct" ? "happy" : "idle";
-  const padEnabled = phase !== "correct";
+  const padEnabled = phase !== "correct" && !discovery;
 
   return (
     <div className="screen" style={accentStyle}>
@@ -143,8 +191,14 @@ export function Play() {
         </button>
       </div>
 
+      {focusTable != null && (
+        <p className="cat-caption" style={{ marginTop: 4 }}>
+          Practising {catName}&apos;s {focusTable}× table
+        </p>
+      )}
+
       <div className="play-body">
-        <CatStage cat={starterCat} mood={catMood} reaction={reaction} size={150} />
+        <CatStage cat={companion} mood={catMood} reaction={reaction} size={150} />
 
         {phase === "await" && <p className="cat-caption">{catName} is watching</p>}
         {phase === "correct" && (
@@ -187,11 +241,14 @@ export function Play() {
           onEnter={submit}
         />
       </div>
+
+      {discovery && (
+        <DiscoveryOverlay
+          cat={findById(roster, discovery.catId) ?? null}
+          kind={discovery.kind}
+          onContinue={advance}
+        />
+      )}
     </div>
   );
-}
-
-/** performance.now() with a safe fallback. */
-function performanceNow(): number {
-  return typeof performance !== "undefined" ? performance.now() : Date.now();
 }

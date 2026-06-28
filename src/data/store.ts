@@ -1,15 +1,18 @@
 // ────────────────────────────────────────────────────────────────────────────
 // Typed data layer. The UI reads and writes game data ONLY through this module;
-// it never touches storage directly. This sits on the storage adapter and owns
-// load/migrate/save plus the domain operations (create profile, record an
-// attempt, record a session). All functions are pure transforms over SaveData
-// followed by a persist — easy to test, easy to swap the backend under.
+// it never touches storage directly. Sits on the storage adapter and owns
+// load/migrate/normalize/save plus the domain operations. Phase 2 adds:
+//   - progression reconcile (introduce tables as the child advances)
+//   - cat progress + milestone cats derived from facts
+//   - discovery / level-up events returned from recordAttempt
+// All cat state is DERIVED from facts + introduced tables, so it can never drift.
 // ────────────────────────────────────────────────────────────────────────────
 
-import { ACTIVE_TABLES, INPUT_MODE } from "../config";
-import { factsForTable } from "../engine/facts";
-import { applyAttempt, emptyStat, masteryPct } from "../engine/mastery";
-import type { Fact } from "../engine/types";
+import { PROGRESSION_MODE, PROGRESSION_ORDER, STARTER_TABLE, INPUT_MODE, ACTIVE_TABLES } from "../config";
+import { emptyStat, applyAttempt } from "../engine/mastery";
+import { reconcileIntroduced, tableMasteryPct } from "../engine/progression";
+import { allStarsMilestone, divisionMilestone } from "../engine/milestones";
+import type { Fact, FactStat } from "../engine/types";
 import { storage } from "./storage";
 import {
   SCHEMA_VERSION,
@@ -21,6 +24,9 @@ import {
 } from "./schema";
 
 const SAVE_KEY = "save";
+
+export const DIV_CAT_ID = "div";
+export const ALL_CAT_ID = "all";
 
 /** UUID with a non-crypto fallback for older runtimes. */
 function uid(): string {
@@ -35,13 +41,86 @@ export function catIdForTable(tableId: number): string {
   return String(tableId).padStart(2, "0");
 }
 
+// ── Cat derivation ────────────────────────────────────────────────────────────
+
+/**
+ * Build the full cat-progress map from the introduced tables + fact stats. This
+ * is the single source of truth for cat state: table-cats for each introduced
+ * table, plus the two milestone cats when their triggers fire. `prev` is only
+ * read to preserve original `unlockedAt` timestamps.
+ */
+function deriveCats(
+  introduced: number[],
+  facts: Record<string, FactStat>,
+  prev: Record<string, CatProgress>,
+  now: string,
+): Record<string, CatProgress> {
+  const cats: Record<string, CatProgress> = {};
+
+  for (const tableId of introduced) {
+    const catId = catIdForTable(tableId);
+    const pct = tableMasteryPct(tableId, facts);
+    cats[catId] = {
+      catId,
+      tableId,
+      unlocked: true,
+      masteryPct: pct,
+      mastered: pct === 100,
+      unlockedAt: prev[catId]?.unlockedAt ?? now,
+    };
+  }
+
+  // Milestone: division cat.
+  const div = divisionMilestone(facts);
+  if (div.unlocked) {
+    cats[DIV_CAT_ID] = {
+      catId: DIV_CAT_ID,
+      tableId: 0,
+      unlocked: true,
+      masteryPct: div.masteryPct,
+      mastered: div.mastered,
+      unlockedAt: prev[DIV_CAT_ID]?.unlockedAt ?? now,
+    };
+  }
+
+  // Milestone: all-stars cat (depends on every table-cat + the division cat).
+  const isTableMastered = (t: number) => cats[catIdForTable(t)]?.mastered ?? false;
+  const all = allStarsMilestone(isTableMastered, div.mastered);
+  if (all.unlocked) {
+    cats[ALL_CAT_ID] = {
+      catId: ALL_CAT_ID,
+      tableId: 0,
+      unlocked: true,
+      masteryPct: all.masteryPct,
+      mastered: all.mastered,
+      unlockedAt: prev[ALL_CAT_ID]?.unlockedAt ?? now,
+    };
+  }
+
+  return cats;
+}
+
 // ── Load / save ─────────────────────────────────────────────────────────────
+
+/** Re-derive cats so loaded state is always consistent with introduced + facts. */
+function normalizeCats(data: SaveData, now: string): SaveData {
+  return {
+    ...data,
+    cats: deriveCats(data.progress.introduced, data.facts, data.cats, now),
+  };
+}
 
 export function loadSave(): SaveData | null {
   const raw = storage.get(SAVE_KEY);
   if (!raw) return null;
   try {
-    return migrate(JSON.parse(raw));
+    const migrated = migrate(JSON.parse(raw));
+    if (!migrated) return null;
+    const normalized = normalizeCats(migrated, new Date().toISOString());
+    // Write back so storage is upgraded to the current schema on first load,
+    // rather than re-migrating every boot.
+    persist(normalized);
+    return normalized;
   } catch {
     return null;
   }
@@ -70,12 +149,16 @@ export function createProfile(name: string, now: string): SaveData {
     },
   };
 
+  const introduced =
+    PROGRESSION_MODE === "open" ? [...PROGRESSION_ORDER] : [STARTER_TABLE];
+
   const data: SaveData = {
     schemaVersion: SCHEMA_VERSION,
     profile,
     facts: {},
-    cats: {},
+    cats: deriveCats(introduced, {}, {}, now),
     sessions: [],
+    progress: { introduced },
   };
 
   persist(data);
@@ -100,60 +183,62 @@ export interface RecordAttemptInput {
   now: string;
 }
 
+/** What changed as a result of an attempt — drives the discovery/level-up beats. */
+export interface AttemptEvents {
+  /** This attempt newly mastered the individual fact. */
+  factMastered: boolean;
+  /** Cat ids that newly unlocked (a table introduced, or a milestone). */
+  newCats: string[];
+  /** Cat ids that newly reached full mastery. */
+  masteredCats: string[];
+}
+
 /**
- * Fold one attempt into the save: update the fact's stats (streak, avg, mastery)
- * and recompute the owning cat's table progress. Returns the new save and
- * whether the attempt newly mastered the whole table (a future "discovery" beat).
+ * Fold one attempt into the save: update the fact's stats, advance progression
+ * (possibly introducing new tables), re-derive all cat progress + milestones,
+ * persist, and report what newly discovered or mastered.
  */
 export function recordAttempt(
   data: SaveData,
   input: RecordAttemptInput,
-): { data: SaveData; factMastered: boolean; tableMastered: boolean } {
+): { data: SaveData; events: AttemptEvents } {
   const { fact, correct, ms, now } = input;
 
   const prevStat = data.facts[fact.key] ?? emptyStat(fact, now);
-  const wasMastered = prevStat.mastered;
+  const wasFactMastered = prevStat.mastered;
   const nextStat = applyAttempt(prevStat, { correct, ms, now });
-
   const facts = { ...data.facts, [fact.key]: nextStat };
 
-  // Recompute the owning cat's table mastery from the updated facts.
-  const tableFacts = factsForTable(fact.tableId);
-  const pct = masteryPct(tableFacts, facts);
-  const tableMastered = pct === 100;
+  const introduced = reconcileIntroduced(data.progress.introduced, facts);
+  const cats = deriveCats(introduced, facts, data.cats, now);
 
-  const catId = catIdForTable(fact.tableId);
-  const prevCat = data.cats[catId];
-  const nextCat: CatProgress = {
-    catId,
-    tableId: fact.tableId,
-    unlocked: prevCat?.unlocked ?? true, // accrues now; unlock logic is Phase 2
-    masteryPct: pct,
-    mastered: tableMastered,
-    unlockedAt: prevCat?.unlockedAt ?? now,
-  };
+  const newCats = Object.keys(cats).filter((id) => !data.cats[id]?.unlocked);
+  const masteredCats = Object.keys(cats).filter(
+    (id) => cats[id].mastered && !data.cats[id]?.mastered,
+  );
 
   const next: SaveData = {
     ...data,
     facts,
-    cats: { ...data.cats, [catId]: nextCat },
+    cats,
+    progress: { ...data.progress, introduced },
   };
 
   persist(next);
 
   return {
     data: next,
-    factMastered: !wasMastered && nextStat.mastered,
-    tableMastered: !prevCat?.mastered && tableMastered,
+    events: {
+      factMastered: !wasFactMastered && nextStat.mastered,
+      newCats,
+      masteredCats,
+    },
   };
 }
 
 // ── Sessions ──────────────────────────────────────────────────────────────────
 
-export function recordSession(
-  data: SaveData,
-  session: Omit<Session, "id">,
-): SaveData {
+export function recordSession(data: SaveData, session: Omit<Session, "id">): SaveData {
   const next: SaveData = {
     ...data,
     sessions: [...data.sessions, { id: uid(), ...session }],

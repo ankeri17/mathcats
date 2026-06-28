@@ -1,8 +1,13 @@
-// The Den — the home hub. One job above all: make Play unmissable. A mini
-// clowder teaser shows the starter cat (the full collection screen is Phase 3).
+// The Den — the home hub. Play stays unmissable. The clowder teaser now reflects
+// real progression (the cats the engine has introduced). The full collection
+// screen is still Phase 3; this is just a peek.
 import { useNavigate } from "react-router-dom";
 import { CatStage } from "../../cats/CatStage";
+import { findById } from "../../cats/roster";
+import { catIdForTable } from "../../data/store";
 import { useApp } from "../../state/AppState";
+
+const TOTAL_CATS = 13; // 11 table-cats + 2 milestone cats
 
 function greeting(hour: number): string {
   if (hour < 12) return "Good morning";
@@ -11,21 +16,28 @@ function greeting(hour: number): string {
 }
 
 export function Den() {
-  const { save, starterCat, setMuted } = useApp();
+  const { save, roster, setMuted } = useApp();
   const navigate = useNavigate();
   const name = save?.profile.name ?? "friend";
   const muted = save?.profile.settings.muted ?? false;
   const sessions = save?.sessions.length ?? 0;
 
-  const accentStyle = starterCat
-    ? ({ ["--cat-accent" as string]: starterCat.accent } as React.CSSProperties)
-    : undefined;
+  // Discovered cats, in introduction order, then milestone cats.
+  const order = [
+    ...(save?.progress.introduced.map(catIdForTable) ?? []),
+    "div",
+    "all",
+  ];
+  const discovered = order
+    .filter((id) => save?.cats[id])
+    .map((id) => ({ progress: save!.cats[id], cat: findById(roster, id) }));
+  const remaining = TOTAL_CATS - discovered.length;
 
   const todayLine =
     sessions === 0 ? "Your first set awaits" : `${sessions} set${sessions === 1 ? "" : "s"} done · nice work`;
 
   return (
-    <div className="screen" style={accentStyle}>
+    <div className="screen">
       <div className="den-row">
         <div className="den-greeting">
           <p className="muted" style={{ fontSize: 14 }}>
@@ -52,34 +64,42 @@ export function Den() {
         <h2>Play</h2>
         <div className="sub">A short set · ~2 min</div>
         <div className="peek" aria-hidden="true">
-          <CatStage cat={starterCat} mood="happy" size={130} />
+          <CatStage cat={discovered[0]?.cat ?? null} mood="happy" size={130} />
         </div>
       </button>
 
       <div className="section-head">
         <h3>Your clowder</h3>
-        <span className="count">1 of 13</span>
+        <span className="count">
+          {discovered.length} of {TOTAL_CATS}
+        </span>
       </div>
       <div className="clowder-peek">
-        <div className="peek-card starter">
-          <CatStage cat={starterCat} mood="idle" size={72} />
-          <div className="nm">{starterCat?.shortName ?? "Cat"}</div>
-          <span className="tag tg">7× table</span>
-        </div>
-        <div className="peek-card locked">
-          <CatStage cat={null} mood="idle" size={72} />
-          <div className="nm">???</div>
-          <span className="muted tg" style={{ fontSize: 11 }}>
-            Undiscovered
-          </span>
-        </div>
-        <div className="peek-card locked">
-          <CatStage cat={null} mood="idle" size={72} />
-          <div className="nm">???</div>
-          <span className="muted tg" style={{ fontSize: 11 }}>
-            Undiscovered
-          </span>
-        </div>
+        {discovered.map(({ progress, cat }) => {
+          const accent = cat?.accent ?? "var(--primary)";
+          return (
+            <div
+              key={progress.catId}
+              className="peek-card starter"
+              style={{ ["--cat-accent" as string]: accent } as React.CSSProperties}
+            >
+              <CatStage cat={cat ?? null} mood="idle" size={72} />
+              <div className="nm">{cat?.shortName ?? "Cat"}</div>
+              <span className="tag tg">
+                {progress.mastered ? "★ Mastered" : `${progress.masteryPct}%`}
+              </span>
+            </div>
+          );
+        })}
+        {remaining > 0 && (
+          <div className="peek-card locked">
+            <CatStage cat={null} mood="idle" size={72} />
+            <div className="nm">???</div>
+            <span className="muted tg" style={{ fontSize: 11 }}>
+              +{remaining} to find
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="den-spacer" />

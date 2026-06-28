@@ -17,9 +17,7 @@ import { loadRoster, findByTable, type Cat } from "../cats/roster";
 import * as store from "../data/store";
 import type { SaveData, Session } from "../data/schema";
 import type { Fact } from "../engine/types";
-
-/** The cat the player meets first (the 7× cat, per the onboarding design). */
-const STARTER_TABLE = 7;
+import { STARTER_TABLE } from "../config";
 
 interface AppContextValue {
   ready: boolean;

@@ -520,6 +520,87 @@
   font-weight: 600;
 }
 
+/* ── Discovery / level-up overlay ─────────────────────────────────────────── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--s-6);
+  background: rgba(42, 42, 68, 0.32);
+  backdrop-filter: blur(2px);
+  animation: overlay-fade 200ms var(--ease-standard);
+}
+@keyframes overlay-fade {
+  from {
+    opacity: 0;
+  }
+}
+.overlay__card {
+  width: min(420px, 100%);
+  background: var(--surface);
+  border-radius: var(--r-card);
+  box-shadow: var(--e-float);
+  padding: var(--s-8) var(--s-6);
+  animation: card-pop var(--t-discovery) var(--ease-squish);
+}
+@keyframes card-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.92) translateY(10px);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+  }
+}
+/* Soft violet bloom behind the discovered cat. */
+.discovery__bloom {
+  position: relative;
+  display: grid;
+  place-items: center;
+  margin: var(--s-2) 0;
+}
+.discovery__bloom::before {
+  content: "";
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  border-radius: var(--r-pill);
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--cat-accent) 38%, transparent),
+    transparent 68%
+  );
+  animation: bloom 900ms var(--ease-standard);
+}
+@keyframes bloom {
+  0% {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .overlay__card {
+    animation: overlay-fade 160ms ease;
+  }
+  .discovery__bloom::before {
+    animation: none;
+    opacity: 0.7;
+  }
+}
+
 /* ── Coming soon (out-of-scope tabs) ──────────────────────────────────────── */
 .coming-soon {
   flex: 1;

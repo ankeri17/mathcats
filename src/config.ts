@@ -24,3 +24,35 @@ export const INPUT_MODE: InputMode = "numpad";
  */
 export const FACTOR_MIN = 2;
 export const FACTOR_MAX = 12;
+
+// ────────────────────────────────────────────────────────────────────────────
+// Phase 2 — adaptive practice & cat progression.
+// ────────────────────────────────────────────────────────────────────────────
+
+/** The cat/table the child meets first (from onboarding — Cream, the 7× cat). */
+export const STARTER_TABLE = 7;
+
+/** Order the engine introduces tables in — easiest-first. */
+export const PROGRESSION_ORDER: number[] = [2, 5, 10, 3, 4, 6, 7, 8, 9, 11, 12];
+
+/** How many not-yet-mastered tables stay in focus at once. */
+export const ACTIVE_FRONT = 2;
+
+/** masteryPct (0–1) on the leading table that pulls in the next one. */
+export const ADVANCE_AT = 0.8;
+
+/** Fraction of problems that are retention review of earlier mastered facts. */
+export const REVIEW_SHARE = 0.2;
+
+/**
+ * "paced"  — lead through tables, advance fast past known ones (default).
+ * "strict" — next table locked until the current one is fully mastered.
+ * "open"   — every table introduced from the start; collection is pure mastery%.
+ */
+export const PROGRESSION_MODE: "paced" | "strict" | "open" = "paced";
+
+/** A mastered fact becomes "due" for review after this many selections unseen. */
+export const REVIEW_DUE_GAP = 8;
+
+/** Don't serve the same fact again within this many selections (anti-streak). */
+export const RECENT_BLOCK = 3;
