@@ -39,6 +39,8 @@ export interface Cat {
   /** Color for theming UI bits that should match this cat. */
   accent: string;
   isMilestone: boolean;
+  /** The all-stars prize cat gets a shimmer treatment. */
+  shimmer: boolean;
   art: (mood: CatMood) => string;
 }
 
@@ -54,6 +56,7 @@ function deriveCat(raw: RosterEntryRaw): Cat {
     belly: raw.belly,
     accent: raw.markColor ?? raw.shade ?? raw.coat,
     isMilestone: tableId === null,
+    shimmer: Boolean(raw.shimmer),
     art: (mood: CatMood) => `/cats/${raw.file}_${mood}.svg`,
   };
 }

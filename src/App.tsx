@@ -9,6 +9,8 @@ import { Den } from "./ui/screens/Den";
 import { Play } from "./ui/screens/Play";
 import { Summary } from "./ui/screens/Summary";
 import { ComingSoon } from "./ui/screens/ComingSoon";
+import { Clowder } from "./ui/screens/Clowder";
+import { CatDetail } from "./ui/screens/CatDetail";
 
 const ENTITLED = checkEntitlement();
 
@@ -53,6 +55,8 @@ export function App() {
         <Route path="/" element={hasProfile ? <Den /> : <FirstRun />} />
         <Route path="/play" element={hasProfile ? <Play /> : <Navigate to="/" replace />} />
         <Route path="/summary" element={hasProfile ? <Summary /> : <Navigate to="/" replace />} />
+        <Route path="/clowder" element={hasProfile ? <Clowder /> : <Navigate to="/" replace />} />
+        <Route path="/clowder/:catId" element={hasProfile ? <CatDetail /> : <Navigate to="/" replace />} />
         <Route path="/soon" element={hasProfile ? <ComingSoon /> : <Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

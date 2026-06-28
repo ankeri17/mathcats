@@ -109,7 +109,7 @@ export function Den() {
           <span className="ic">🏠</span>
           Den
         </div>
-        <button className="nav-item" onClick={() => navigate("/soon")}>
+        <button className="nav-item" onClick={() => navigate("/clowder")}>
           <span className="ic">🐾</span>
           Clowder
         </button>

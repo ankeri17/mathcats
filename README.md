@@ -1,10 +1,10 @@
 # Math Cats
 
 A mobile-first, local-first multiplication & division practice game — kind by
-design, built for a capable 9-year-old. This covers **Phases 0–2**: the scaffold,
-the core play loop, and the adaptive practice + cat-progression layer underneath
-it. The remaining phases (the Clowder collection screen, the grown-ups dashboard)
-are out of scope here, but the data they read from is already maintained.
+design, built for a capable 9-year-old. This covers **Phases 0–3**: the scaffold,
+the core play loop, the adaptive practice + cat-progression layer underneath it,
+and the Clowder collection screen + cat detail. The remaining phase (the grown-ups
+dashboard) is out of scope here, but the data it reads from is already maintained.
 
 ## What it does
 
@@ -65,8 +65,10 @@ src/
     useInlineSvg   fetch-and-INLINE the SVG (so paws/tail/ears can animate)
     CatStage.tsx   idle ↔ happy, correct/incorrect beats, placeholder fallback
 
-  ui/            Screens + components (FirstRun, Den, Play, Summary; NumberPad,
-                 ProblemDisplay, SessionDots, PrimaryButton).
+  ui/            Screens + components.
+                 screens: FirstRun, Den, Play, Summary, Clowder, CatDetail
+                 components: NumberPad, ProblemDisplay, SessionDots,
+                   PrimaryButton, DiscoveryOverlay, MasteryRing, CatCard
   state/         AppState context — holds the loaded save + roster, exposes
                  actions that go through data/store. Components never touch
                  localStorage directly.
@@ -128,10 +130,22 @@ Every motion ships a `prefers-reduced-motion` fallback (calm fades instead of
 bounces). Numerals stay crisp at phone size (Lexend, tabular figures). Layout
 respects safe areas / notches.
 
-## Out of scope (later phases)
+## The collection (Phase 3)
 
-The Clowder collection screen + cat detail (Phase 3) and the progress / grown-ups
-dashboard (Phase 4), plus accounts, cloud sync, and licensing. The `Clowder` and
-`Progress` tabs lead to a friendly "coming soon" placeholder so the nav never
-dead-ends. Phase 2 maintains all the `CatProgress` those screens will read — they
-visualize existing data rather than computing new logic.
+The Clowder (reached from the Den) is a 2-column grid of all 13 cats, each card
+rendered straight from `CatProgress`: undiscovered (locked silhouette), in
+progress (idle cat + a corner mastery ring), or mastered (a prized frame +
+★ badge), with a discovered/in-progress/mastered filter and the milestone cats
+set apart. Tapping a card opens cat detail — the cat large and animated (tap for a
+happy reaction), a fact-by-fact ×/÷ mastery breakdown, and a **Practice this cat**
+button that launches a Phase 2 table-focus session. A newly-discovered cat plays a
+reveal the first time it's opened; mastered cats carry a gentle flourish. This
+phase only *visualizes* the progress Phase 2 maintains — it computes no new logic.
+
+## Out of scope (later phase)
+
+The progress / grown-ups dashboard (Phase 4), plus accounts, cloud sync, and
+licensing. The `Progress` tab leads to a friendly "coming soon" placeholder so the
+nav never dead-ends. The data that screen will read (per-fact stats, per-table
+mastery, session history) is already maintained — it will be a read, not a
+refactor.

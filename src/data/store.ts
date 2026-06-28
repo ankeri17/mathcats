@@ -246,3 +246,27 @@ export function recordSession(data: SaveData, session: Omit<Session, "id">): Sav
   persist(next);
   return next;
 }
+
+// ── "Seen in detail" set ──────────────────────────────────────────────────────
+// Tracks which cats the child has opened in cat-detail, so a newly-discovered
+// cat plays its reveal exactly once. Kept as a tiny separate key (not part of the
+// game save) — still behind the storage adapter; the UI never touches storage.
+
+const SEEN_KEY = "seenCats";
+
+export function getSeenCats(): Set<string> {
+  const raw = storage.get(SEEN_KEY);
+  if (!raw) return new Set();
+  try {
+    return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+export function markCatSeen(catId: string): void {
+  const seen = getSeenCats();
+  if (seen.has(catId)) return;
+  seen.add(catId);
+  storage.set(SEEN_KEY, JSON.stringify([...seen]));
+}
