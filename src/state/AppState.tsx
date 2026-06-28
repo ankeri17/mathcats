@@ -30,6 +30,7 @@ interface AppContextValue {
   recordAttempt: (input: store.RecordAttemptInput) => ReturnType<typeof store.recordAttempt>;
   recordSession: (session: Omit<Session, "id">) => void;
   setMuted: (muted: boolean) => void;
+  setChallengeMode: (on: boolean) => void;
   reset: () => void;
 }
 
@@ -89,6 +90,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [save],
   );
 
+  const setChallengeMode = useCallback(
+    (on: boolean) => {
+      if (!save) return;
+      setSave(store.setChallengeMode(save, on));
+    },
+    [save],
+  );
+
   const reset = useCallback(() => {
     store.clearSave();
     setSave(null);
@@ -109,6 +118,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     recordAttempt,
     recordSession,
     setMuted,
+    setChallengeMode,
     reset,
   };
 

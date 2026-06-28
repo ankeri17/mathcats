@@ -14,7 +14,7 @@ import {
 } from "../../engine/adaptiveSelector";
 import { computeFront, frontLead } from "../../engine/progression";
 import type { Problem } from "../../engine/types";
-import { SESSION_LENGTH, STARTER_TABLE } from "../../config";
+import { CHALLENGE_SECONDS, SESSION_LENGTH, STARTER_TABLE } from "../../config";
 import { useApp } from "../../state/AppState";
 import { ProblemDisplay, type ProblemState } from "../components/ProblemDisplay";
 import { NumberPad } from "../components/NumberPad";
@@ -48,6 +48,14 @@ export function Play() {
   const [justFilled, setJustFilled] = useState(false);
   const [discovery, setDiscovery] = useState<PendingDiscovery | null>(null);
 
+  // Challenge mode (opt-in, reward-only): a calm per-fact timer that only ever
+  // adds a bonus. Running out of time penalizes nothing — play continues untimed.
+  const challenge = save?.profile.settings.challengeMode ?? false;
+  const [timedOut, setTimedOut] = useState(false);
+  const [speedStreak, setSpeedStreak] = useState(0);
+  const [bonus, setBonus] = useState(false);
+  const challengeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Latest save without stale closures (introduced tables grow mid-session).
   const saveRef = useRef(save);
   saveRef.current = save;
@@ -73,6 +81,17 @@ export function Play() {
     ? ({ ["--cat-accent" as string]: companion.accent } as React.CSSProperties)
     : undefined;
 
+  /** (Re)start the challenge countdown for a freshly shown problem. */
+  const armChallenge = useCallback(() => {
+    if (challengeTimer.current) clearTimeout(challengeTimer.current);
+    setTimedOut(false);
+    setBonus(false);
+    const on = saveRef.current?.profile.settings.challengeMode ?? false;
+    if (on) {
+      challengeTimer.current = setTimeout(() => setTimedOut(true), CHALLENGE_SECONDS * 1000);
+    }
+  }, []);
+
   /** Build the selection inputs from the freshest save (or the focus table). */
   const pickNext = useCallback((): Problem => {
     const s = saveRef.current!;
@@ -88,8 +107,10 @@ export function Play() {
     if (!saveRef.current) return;
     setProblem(pickNext());
     shownAt.current = performanceNow();
+    armChallenge();
     return () => {
       if (advanceTimer.current) clearTimeout(advanceTimer.current);
+      if (challengeTimer.current) clearTimeout(challengeTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -118,7 +139,8 @@ export function Play() {
     setReaction(null);
     setJustFilled(false);
     shownAt.current = performanceNow();
-  }, [index, navigate, pickNext, recordSession, focusTable]);
+    armChallenge();
+  }, [index, navigate, pickNext, recordSession, focusTable, armChallenge]);
 
   /** Drain any queued discovery beats before advancing to the next problem. */
   const advance = useCallback(() => {
@@ -138,7 +160,10 @@ export function Play() {
       return;
     }
 
-    // First attempt — the recorded one.
+    // First attempt — the recorded one. Stop the challenge countdown either way.
+    const beatClock = challenge && !timedOut;
+    if (challengeTimer.current) clearTimeout(challengeTimer.current);
+
     const ms = Math.round(performanceNow() - shownAt.current);
     const right = isCorrect(problem.fact, value);
     const { events } = recordAttempt({ fact: problem.fact, correct: right, ms, now: new Date().toISOString() });
@@ -151,16 +176,27 @@ export function Play() {
 
     if (right) {
       correctCount.current += 1;
+      if (challenge) {
+        // Reward only: in-time grows the speed streak; out-of-time just resets
+        // the bonus — never a penalty.
+        if (beatClock) {
+          setSpeedStreak((s) => s + 1);
+          setBonus(true);
+        } else {
+          setSpeedStreak(0);
+        }
+      }
       setPhase("correct");
       setReaction("correct");
       setJustFilled(true);
       advanceTimer.current = setTimeout(advance, 1050);
     } else {
+      if (challenge) setSpeedStreak(0);
       setPhase("reinforce");
       setReaction("incorrect");
       setEntry("");
     }
-  }, [advance, entry, phase, problem, recordAttempt]);
+  }, [advance, challenge, timedOut, entry, phase, problem, recordAttempt]);
 
   if (!problem) {
     return (
@@ -197,11 +233,31 @@ export function Play() {
         </p>
       )}
 
+      {challenge && (
+        <div className="challenge-bar-wrap" aria-hidden="true">
+          {phase === "await" && !timedOut && (
+            <div
+              key={index}
+              className="challenge-bar"
+              style={{ animationDuration: `${CHALLENGE_SECONDS}s` }}
+            />
+          )}
+        </div>
+      )}
+      {challenge && speedStreak > 0 && (
+        <div className="speed-streak" role="status">
+          ⚡ Speed streak {speedStreak}
+        </div>
+      )}
+
       <div className="play-body">
         <CatStage cat={companion} mood={catMood} reaction={reaction} size={150} />
 
         {phase === "await" && <p className="cat-caption">{catName} is watching</p>}
-        {phase === "correct" && (
+        {phase === "correct" && bonus && (
+          <div className="banner banner--bonus">⚡ Speedy! {catName}&apos;s thrilled.</div>
+        )}
+        {phase === "correct" && !bonus && (
           <div className="banner banner--correct">Nice. {catName}&apos;s impressed.</div>
         )}
         {phase === "reinforce" && (

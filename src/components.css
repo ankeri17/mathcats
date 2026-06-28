@@ -864,6 +864,107 @@ button.cat-card:active {
   }
 }
 
+/* ── Toggle switch + settings ─────────────────────────────────────────────── */
+.toggle {
+  width: 52px;
+  height: 30px;
+  border-radius: var(--r-pill);
+  background: var(--hairline);
+  padding: 3px;
+  flex: 0 0 auto;
+  transition: background 180ms var(--ease-standard);
+}
+.toggle--on {
+  background: var(--primary);
+}
+.toggle__knob {
+  display: block;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--r-pill);
+  background: #fff;
+  box-shadow: var(--e-key);
+  transition: transform 180ms var(--ease-standard);
+}
+.toggle--on .toggle__knob {
+  transform: translateX(22px);
+}
+
+.settings-list {
+  margin-top: var(--s-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  background: var(--surface);
+  border-radius: var(--r-tile);
+  box-shadow: var(--e-key);
+  padding: var(--s-4);
+}
+.settings-row__title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 16px;
+}
+.settings-row__sub {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-top: 2px;
+}
+
+/* ── Challenge mode: countdown + speed streak + bonus ─────────────────────── */
+.challenge-bar-wrap {
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--hairline);
+  overflow: hidden;
+  margin: var(--s-2) 0 0;
+}
+.challenge-bar {
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: linear-gradient(90deg, var(--secondary), var(--tertiary));
+  transform-origin: left center;
+  animation-name: shrink;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+@keyframes shrink {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+.speed-streak {
+  margin: var(--s-2) auto 0;
+  width: fit-content;
+  padding: 5px 14px;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--tertiary) 24%, white);
+  color: color-mix(in srgb, var(--tertiary) 60%, var(--ink));
+  font-size: 13px;
+  font-weight: 700;
+}
+.banner--bonus {
+  background: color-mix(in srgb, var(--pop) 16%, white);
+  color: color-mix(in srgb, var(--pop) 75%, var(--ink));
+  font-weight: 600;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Calm fallback: the bar stays full and simply vanishes when time is up. */
+  .challenge-bar {
+    animation: none;
+    transform: scaleX(1);
+  }
+}
+
 /* ── Coming soon (out-of-scope tabs) ──────────────────────────────────────── */
 .coming-soon {
   flex: 1;

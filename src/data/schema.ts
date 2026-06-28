@@ -19,8 +19,10 @@ export interface Profile {
   settings: {
     inputMode: InputMode;
     activeTables: number[];
-    /** Mute toggle — the one settings knob in scope for Phase 1. */
+    /** Mute toggle. */
     muted?: boolean;
+    /** Opt-in, reward-only challenge timer. */
+    challengeMode?: boolean;
   };
 }
 

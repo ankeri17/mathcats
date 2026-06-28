@@ -56,3 +56,11 @@ export const REVIEW_DUE_GAP = 8;
 
 /** Don't serve the same fact again within this many selections (anti-streak). */
 export const RECENT_BLOCK = 3;
+
+// ────────────────────────────────────────────────────────────────────────────
+// Challenge mode — an OPT-IN, reward-only timer. It never penalizes: running out
+// of time just continues the problem untimed. Off by default.
+// ────────────────────────────────────────────────────────────────────────────
+
+export const CHALLENGE_MODE_DEFAULT = false;
+export const CHALLENGE_SECONDS = 9; // per fact; generous on purpose

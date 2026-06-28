@@ -8,7 +8,14 @@
 // All cat state is DERIVED from facts + introduced tables, so it can never drift.
 // ────────────────────────────────────────────────────────────────────────────
 
-import { PROGRESSION_MODE, PROGRESSION_ORDER, STARTER_TABLE, INPUT_MODE, ACTIVE_TABLES } from "../config";
+import {
+  PROGRESSION_MODE,
+  PROGRESSION_ORDER,
+  STARTER_TABLE,
+  INPUT_MODE,
+  ACTIVE_TABLES,
+  CHALLENGE_MODE_DEFAULT,
+} from "../config";
 import { emptyStat, applyAttempt } from "../engine/mastery";
 import { reconcileIntroduced, tableMasteryPct } from "../engine/progression";
 import { allStarsMilestone, divisionMilestone } from "../engine/milestones";
@@ -146,6 +153,7 @@ export function createProfile(name: string, now: string): SaveData {
       inputMode: INPUT_MODE,
       activeTables: [...ACTIVE_TABLES],
       muted: false,
+      challengeMode: CHALLENGE_MODE_DEFAULT,
     },
   };
 
@@ -169,6 +177,15 @@ export function setMuted(data: SaveData, muted: boolean): SaveData {
   const next: SaveData = {
     ...data,
     profile: { ...data.profile, settings: { ...data.profile.settings, muted } },
+  };
+  persist(next);
+  return next;
+}
+
+export function setChallengeMode(data: SaveData, challengeMode: boolean): SaveData {
+  const next: SaveData = {
+    ...data,
+    profile: { ...data.profile, settings: { ...data.profile.settings, challengeMode } },
   };
   persist(next);
   return next;
