@@ -1,0 +1,131 @@
+[
+  {
+    "id": "02",
+    "file": "cat_02",
+    "label": "Soft Grey, the 2× cat",
+    "coat": "#B7BBCC",
+    "shade": "#989DB4",
+    "belly": "#E4E6F0",
+    "mark": "bib"
+  },
+  {
+    "id": "03",
+    "file": "cat_03",
+    "label": "Periwinkle, the 3× cat",
+    "coat": "#8E96DF",
+    "shade": "#6F79D0",
+    "belly": "#CCD2F4",
+    "mark": "socks"
+  },
+  {
+    "id": "04",
+    "file": "cat_04",
+    "label": "Lavender, the 4× cat",
+    "coat": "#C3A9E4",
+    "shade": "#A98FD6",
+    "belly": "#E1D5F2",
+    "mark": "mask",
+    "markColor": "#6E54A8"
+  },
+  {
+    "id": "05",
+    "file": "cat_05",
+    "label": "Mint, the 5× cat",
+    "coat": "#8FCBAA",
+    "shade": "#6CB48F",
+    "belly": "#CFEBDB",
+    "mark": "blaze"
+  },
+  {
+    "id": "06",
+    "file": "cat_06",
+    "label": "Marmalade, the 6× cat",
+    "coat": "#ECAE7C",
+    "shade": "#D98E52",
+    "belly": "#FBDCC0",
+    "mark": "tabby",
+    "markColor": "#C9732F"
+  },
+  {
+    "id": "07",
+    "file": "cat_07",
+    "label": "Cream, the 7× cat",
+    "coat": "#E7D2A2",
+    "shade": "#CFB57B",
+    "belly": "#F8EFD6",
+    "mark": "eyepatch",
+    "markColor": "#A07B45"
+  },
+  {
+    "id": "08",
+    "file": "cat_08",
+    "label": "Teal, the 8× cat",
+    "coat": "#6DB1BB",
+    "shade": "#4D97A1",
+    "belly": "#C0E0E2",
+    "mark": "points",
+    "point": true,
+    "markColor": "#327D89"
+  },
+  {
+    "id": "09",
+    "file": "cat_09",
+    "label": "Rose, the 9× cat",
+    "coat": "#E9A7B5",
+    "shade": "#D8899A",
+    "belly": "#FAD6DC",
+    "mark": "sidepatch",
+    "markColor": "#C26277",
+    "tail": "curl"
+  },
+  {
+    "id": "10",
+    "file": "cat_10",
+    "label": "Silver, the 10× cat",
+    "coat": "#C6CFDC",
+    "shade": "#A9B4C6",
+    "belly": "#ECEFF5",
+    "mark": "saddle",
+    "markColor": "#7E8CA4",
+    "eyes": "big"
+  },
+  {
+    "id": "11",
+    "file": "cat_11",
+    "label": "Butter, the 11× cat",
+    "coat": "#EFD673",
+    "shade": "#D9BE4A",
+    "belly": "#FBF1C6",
+    "mark": "spots",
+    "markColor": "#C19A1E"
+  },
+  {
+    "id": "12",
+    "file": "cat_12",
+    "label": "Charcoal, the 12× cat",
+    "coat": "#565670",
+    "shade": "#41415A",
+    "belly": "#7A7A94",
+    "mark": "tuxedo",
+    "dark": true
+  },
+  {
+    "id": "div",
+    "file": "cat_div",
+    "label": "Violet, the division milestone cat",
+    "coat": "#9B72D4",
+    "shade": "#8259C4",
+    "belly": "#D7C6F2",
+    "mark": "star"
+  },
+  {
+    "id": "all",
+    "file": "cat_all",
+    "label": "Iridescent, the all-stars prize cat",
+    "coat": "#DCD0EC",
+    "shade": "#C3B6DE",
+    "belly": "#EFE8F6",
+    "mark": "",
+    "shimmer": true
+  }
+]

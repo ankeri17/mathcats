@@ -1,0 +1,10 @@
+# Netlify static build for Math Cats.
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# SPA fallback so client-side routes resolve on reload / deep link.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
