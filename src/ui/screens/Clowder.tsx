@@ -50,7 +50,7 @@ export function Clowder() {
           key={cat.id}
           cat={cat}
           progress={save?.cats[catId(cat)]}
-          onOpen={(id) => navigate(`/clowder/${id}`)}
+          onOpen={(id) => navigate(`/cats/${id}`)}
         />
       ))}
     </div>
@@ -62,7 +62,7 @@ export function Clowder() {
     <div className="screen">
       <div className="den-row">
         <div>
-          <h1 style={{ fontSize: 26 }}>The Clowder</h1>
+          <h1 style={{ fontSize: 26 }}>My Cats</h1>
           <p className="muted" style={{ fontSize: 14, marginTop: 2 }}>
             {discoveredCount} of 13 found
           </p>
@@ -105,7 +105,7 @@ export function Clowder() {
         </button>
         <div className="nav-item on">
           <span className="ic">🐾</span>
-          Clowder
+          My Cats
         </div>
         <button className="nav-item" onClick={() => navigate("/soon")}>
           <span className="ic">📊</span>

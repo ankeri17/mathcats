@@ -66,7 +66,7 @@ export function CatDetail() {
     }
   }, [cat, discovered, reveal]);
 
-  if (!cat || !discovered) return <Navigate to="/clowder" replace />;
+  if (!cat || !discovered) return <Navigate to="/cats" replace />;
 
   const accentStyle = { ["--cat-accent" as string]: cat.accent } as React.CSSProperties;
   const pct = progress?.masteryPct ?? 0;
@@ -89,7 +89,7 @@ export function CatDetail() {
   return (
     <div className={`screen ${reveal ? "reveal" : ""}`} style={accentStyle}>
       <div className="topbar">
-        <button className="icon-btn" aria-label="Back to the clowder" onClick={() => navigate("/clowder")}>
+        <button className="icon-btn" aria-label="Back to My Cats" onClick={() => navigate("/cats")}>
           ‹
         </button>
         <span />
@@ -117,7 +117,7 @@ export function CatDetail() {
         <p className="muted" style={{ textAlign: "center", marginTop: 24, padding: "0 8px" }}>
           {cat.id === "div"
             ? "Violet grows as you master division facts across every table."
-            : "Iridescent arrives when the whole clowder has mastered their tables."}
+            : "Iridescent arrives when all your cats have mastered their tables."}
         </p>
       ) : (
         <div className="clowder-scroll">

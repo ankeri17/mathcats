@@ -35,7 +35,7 @@ export function DiscoveryOverlay({ cat, kind, onContinue }: Props) {
             ? `${name} has every fact down. Star earned.`
             : cat?.tableId
               ? `Your ${cat.tableId}× buddy is here. Keep going.`
-              : "A special cat joins your clowder."}
+              : "A special cat joins your cats."}
         </p>
         <div style={{ marginTop: 20 }}>
           <PrimaryButton onClick={onContinue}>Nice!</PrimaryButton>
