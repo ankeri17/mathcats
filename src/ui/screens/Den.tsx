@@ -16,10 +16,9 @@ function greeting(hour: number): string {
 }
 
 export function Den() {
-  const { save, roster, setMuted } = useApp();
+  const { save, roster } = useApp();
   const navigate = useNavigate();
   const name = save?.profile.name ?? "friend";
-  const muted = save?.profile.settings.muted ?? false;
   const sessions = save?.sessions.length ?? 0;
 
   // Discovered cats, in introduction order, then milestone cats.
@@ -34,7 +33,9 @@ export function Den() {
   const remaining = TOTAL_CATS - discovered.length;
 
   const todayLine =
-    sessions === 0 ? "Your first set awaits" : `${sessions} set${sessions === 1 ? "" : "s"} done · nice work`;
+    sessions === 0
+      ? "Ready when you are — tap Play to start a round."
+      : `${sessions} set${sessions === 1 ? "" : "s"} done · nice work`;
 
   return (
     <div className="screen">
@@ -43,15 +44,10 @@ export function Den() {
           <p className="muted" style={{ fontSize: 14 }}>
             {greeting(new Date().getHours())}
           </p>
-          <h1>Hi, {name}</h1>
+          <h1>Hi, {name}!</h1>
         </div>
-        <button
-          className="icon-btn"
-          aria-label={muted ? "Unmute" : "Mute"}
-          aria-pressed={muted}
-          onClick={() => setMuted(!muted)}
-        >
-          {muted ? "🔇" : "🔊"}
+        <button className="icon-btn" aria-label="Settings" onClick={() => navigate("/settings")}>
+          ⚙
         </button>
       </div>
 
@@ -60,16 +56,16 @@ export function Den() {
         <div className="line">{todayLine}</div>
       </div>
 
-      <button className="play-hero" onClick={() => navigate("/play")} aria-label="Play a short set">
+      <button className="play-hero" onClick={() => navigate("/play")} aria-label="Play a round">
         <h2>Play</h2>
-        <div className="sub">A short set · ~2 min</div>
+        <div className="sub">Practice multiplication and division.</div>
         <div className="peek" aria-hidden="true">
           <CatStage cat={discovered[0]?.cat ?? null} mood="happy" size={130} />
         </div>
       </button>
 
       <div className="section-head">
-        <h3>Your clowder</h3>
+        <h3>Your cats</h3>
         <span className="count">
           {discovered.length} of {TOTAL_CATS}
         </span>
@@ -109,9 +105,9 @@ export function Den() {
           <span className="ic">🏠</span>
           Den
         </div>
-        <button className="nav-item" onClick={() => navigate("/clowder")}>
+        <button className="nav-item" onClick={() => navigate("/cats")}>
           <span className="ic">🐾</span>
-          Clowder
+          My Cats
         </button>
         <button className="nav-item" onClick={() => navigate("/soon")}>
           <span className="ic">📊</span>

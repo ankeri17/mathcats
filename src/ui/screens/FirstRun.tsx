@@ -26,10 +26,8 @@ export function FirstRun() {
     return (
       <div className="screen">
         <p className="eyebrow">First run</p>
-        <h1 style={{ fontSize: 30, marginTop: 8 }}>Let&apos;s set up your den.</h1>
-        <p className="muted" style={{ marginTop: 10 }}>
-          Your clowder starts with one cat. First, what should we call you?
-        </p>
+        <h1 style={{ fontSize: 30, marginTop: 8 }}>Who&apos;s playing?</h1>
+        <p className="muted" style={{ marginTop: 10 }}>Pick a name to start.</p>
 
         <div className="name-grid">
           {names.map((n) => (
@@ -63,7 +61,7 @@ export function FirstRun() {
     );
   }
 
-  // Step 1 — meet the starter cat.
+  // Step 1 — meet the starter cat, then launch straight into the first round.
   const catName = starterCat?.shortName ?? "your cat";
   return (
     <div className="screen" style={accentStyle}>
@@ -75,12 +73,13 @@ export function FirstRun() {
         <CatStage cat={starterCat} mood="happy" size={200} />
       </div>
 
-      <h1 style={{ textAlign: "center", marginTop: 8, fontSize: 30 }}>{catName}</h1>
+      <h1 style={{ textAlign: "center", marginTop: 8, fontSize: 30 }}>Meet {catName}!</h1>
       <div style={{ textAlign: "center", marginTop: 10 }}>
         <span className="tag">Your 7× table buddy</span>
       </div>
-      <p className="muted" style={{ textAlign: "center", marginTop: 16, maxWidth: 300, marginInline: "auto" }}>
-        Get {catName}&apos;s 7s right and they&apos;ll warm right up to you.
+      <p className="muted" style={{ textAlign: "center", marginTop: 16, maxWidth: 320, marginInline: "auto" }}>
+        Your very first cat. Answer math problems to find more and watch your cats
+        grow.
       </p>
 
       <div className="den-spacer" />
@@ -88,10 +87,11 @@ export function FirstRun() {
       <PrimaryButton
         onClick={() => {
           if (name) createProfile(name);
-          navigate("/", { replace: true });
+          // Straight into the first round — don't make them hunt for Play.
+          navigate("/play", { replace: true });
         }}
       >
-        Let&apos;s play
+        Start playing
       </PrimaryButton>
     </div>
   );
