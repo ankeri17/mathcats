@@ -3,8 +3,12 @@
 A mobile-first, local-first multiplication & division practice game — kind by
 design, built for a capable 9-year-old. This covers **Phases 0–3**: the scaffold,
 the core play loop, the adaptive practice + cat-progression layer underneath it,
-and the Clowder collection screen + cat detail. The remaining phase (the grown-ups
-dashboard) is out of scope here, but the data it reads from is already maintained.
+and the My Cats collection screen + cat detail, plus an opt-in Challenge mode. The
+remaining phase (the grown-ups dashboard) is out of scope here, but the data it
+reads from is already maintained.
+
+© 2026 — all rights reserved. (Public for visibility, not for reuse; no
+open-source license is granted.)
 
 ## What it does
 
@@ -66,9 +70,10 @@ src/
     CatStage.tsx   idle ↔ happy, correct/incorrect beats, placeholder fallback
 
   ui/            Screens + components.
-                 screens: FirstRun, Den, Play, Summary, Clowder, CatDetail
+                 screens: FirstRun, Den, Play, Summary, Clowder ("My Cats"),
+                   CatDetail, Settings
                  components: NumberPad, ProblemDisplay, SessionDots,
-                   PrimaryButton, DiscoveryOverlay, MasteryRing, CatCard
+                   PrimaryButton, DiscoveryOverlay, MasteryRing, CatCard, Toggle
   state/         AppState context — holds the loaded save + roster, exposes
                  actions that go through data/store. Components never touch
                  localStorage directly.
@@ -132,7 +137,7 @@ respects safe areas / notches.
 
 ## The collection (Phase 3)
 
-The Clowder (reached from the Den) is a 2-column grid of all 13 cats, each card
+My Cats (reached from the Den) is a 2-column grid of all 13 cats, each card
 rendered straight from `CatProgress`: undiscovered (locked silhouette), in
 progress (idle cat + a corner mastery ring), or mastered (a prized frame +
 ★ badge), with a discovered/in-progress/mastered filter and the milestone cats

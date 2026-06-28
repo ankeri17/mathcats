@@ -6,6 +6,9 @@ dist-ssr
 .vite
 *.tsbuildinfo
 
+# Environment / secrets
+.env*
+
 # Editor
 .vscode/*
 !.vscode/extensions.json
