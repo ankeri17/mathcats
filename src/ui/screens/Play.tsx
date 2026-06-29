@@ -200,7 +200,7 @@ export function Play() {
 
   if (!problem) {
     return (
-      <div className="screen" style={accentStyle}>
+      <div className="screen screen--play" style={accentStyle}>
         <p className="muted" style={{ margin: "auto" }}>Getting your set ready…</p>
       </div>
     );
@@ -212,7 +212,7 @@ export function Play() {
   const padEnabled = phase !== "correct" && !discovery;
 
   return (
-    <div className="screen" style={accentStyle}>
+    <div className="screen screen--play" style={accentStyle}>
       <div className="topbar">
         <button className="icon-btn" aria-label="Back to the den" onClick={() => navigate("/")}>
           ‹
@@ -251,7 +251,7 @@ export function Play() {
       )}
 
       <div className="play-body">
-        <CatStage cat={companion} mood={catMood} reaction={reaction} size={150} />
+        <CatStage cat={companion} mood={catMood} reaction={reaction} size={116} />
 
         {phase === "await" && <p className="cat-caption">{catName} is watching</p>}
         {phase === "correct" && bonus && (
