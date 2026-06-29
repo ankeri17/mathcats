@@ -13,7 +13,7 @@ export const ACTIVE_TABLES: number[] = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 export const SESSION_LENGTH = 9;
 
 /** Correct-in-a-row needed before a single fact is considered "mastered". */
-export const MASTERY_STREAK = 3;
+export const MASTERY_STREAK = 2;
 
 /** Answer input mode. Multiple-choice "easy mode" is Phase 2+. */
 export const INPUT_MODE: InputMode = "numpad";
@@ -39,7 +39,7 @@ export const PROGRESSION_ORDER: number[] = [2, 5, 10, 3, 4, 6, 7, 8, 9, 11, 12];
 export const ACTIVE_FRONT = 2;
 
 /** masteryPct (0–1) on the leading table that pulls in the next one. */
-export const ADVANCE_AT = 0.8;
+export const ADVANCE_AT = 0.6;
 
 /** Fraction of problems that are retention review of earlier mastered facts. */
 export const REVIEW_SHARE = 0.2;

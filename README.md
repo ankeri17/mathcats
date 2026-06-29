@@ -104,14 +104,14 @@ Surfaced at the top of `src/config.ts`:
 ```ts
 const ACTIVE_TABLES = [2,3,4,5,6,7,8,9,10,11,12]; // universe of tables
 const SESSION_LENGTH = 9;     // problems per session
-const MASTERY_STREAK = 3;     // correct-in-a-row to master a fact
+const MASTERY_STREAK = 2;     // correct-in-a-row to master a fact
 const INPUT_MODE = "numpad";  // multiple-choice easy mode is later
 
 // Phase 2 — adaptive practice & progression
 const STARTER_TABLE = 7;                              // the onboarding cat (Cream)
 const PROGRESSION_ORDER = [2,5,10,3,4,6,7,8,9,11,12]; // easiest-first introduction
 const ACTIVE_FRONT = 2;        // tables in focus at once
-const ADVANCE_AT = 0.8;        // masteryPct that pulls in the next table
+const ADVANCE_AT = 0.6;        // masteryPct that pulls in the next table
 const REVIEW_SHARE = 0.2;      // fraction of problems that are retention review
 const PROGRESSION_MODE = "paced"; // "paced" | "strict" | "open"
 ```

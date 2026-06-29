@@ -23,7 +23,7 @@ export function boxOf(stat: FactStat | undefined): Box {
 const WEIGHT: Record<Box, number> = {
   struggling: 6,
   new: 4,
-  learning: 2,
+  learning: 3,
   mastered: 1,
 };
 
@@ -73,20 +73,31 @@ export function selectNext(args: SelectArgs): { problem: Problem; state: Selecto
   if (pool.length === 0) throw new Error("selectNext: empty pool");
 
   const lastKey = state.recent[state.recent.length - 1] ?? null;
+  const isMastered = (f: Fact) => boxOf(stats[f.key]) === "mastered";
 
   const struggling = pool.filter((f) => boxOf(stats[f.key]) === "struggling");
-  const frontFacts = pool.filter((f) => front.has(f.tableId));
+  // The weak spots worth drilling: front-table facts not yet mastered. We do NOT
+  // keep re-testing already-mastered facts in the table you're still learning —
+  // that's what made progression feel like grinding the same things.
+  const frontUnmastered = pool.filter((f) => front.has(f.tableId) && !isMastered(f));
+  // Review = EARLIER mastered facts (outside the current front), surfaced when
+  // due. While a table is still being learned it has no "earlier" facts, so 100%
+  // of practice goes to the weak spots and the next cat arrives faster.
   const dueReview = pool.filter((f) => {
-    if (boxOf(stats[f.key]) !== "mastered") return false;
+    if (front.has(f.tableId) || !isMastered(f)) return false;
     const last = state.servedAt[f.key];
     return last === undefined || state.count - last >= REVIEW_DUE_GAP;
   });
 
-  // A steady minority of problems are retention review; the rest are front + any
-  // struggling fact anywhere.
+  // A steady minority of problems are retention review of earlier tables; the
+  // rest target the weak spots (unmastered front facts + any struggling fact).
   const wantReview = rng() < REVIEW_SHARE && dueReview.length > 0;
-  let primary = wantReview ? dueReview : dedupe([...frontFacts, ...struggling]);
-  if (primary.length === 0) primary = pool;
+  let primary = wantReview ? dueReview : dedupe([...frontUnmastered, ...struggling]);
+  if (primary.length === 0) {
+    // Everything in the front is mastered — keep the table warm, else fall back.
+    const frontAny = pool.filter((f) => front.has(f.tableId));
+    primary = frontAny.length > 0 ? frontAny : pool;
+  }
 
   // Interleave: avoid the immediate repeat and a short recent window.
   const blocked = new Set(state.recent.slice(-RECENT_BLOCK));
