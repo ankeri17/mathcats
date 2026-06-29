@@ -1,15 +1,23 @@
-// Settings — a minimal, on-brand surface. Sound, and the opt-in Challenge mode.
-// (A fuller settings screen is a later phase.)
+// Settings — a minimal, on-brand surface. Sound, the opt-in Challenge mode, and
+// a "start over" that returns to name selection. (A fuller settings screen is a
+// later phase.)
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CHALLENGE_SECONDS } from "../../config";
 import { useApp } from "../../state/AppState";
 import { Toggle } from "../components/Toggle";
 
 export function Settings() {
-  const { save, setMuted, setChallengeMode } = useApp();
+  const { save, setMuted, setChallengeMode, reset } = useApp();
   const navigate = useNavigate();
   const muted = save?.profile.settings.muted ?? false;
   const challenge = save?.profile.settings.challengeMode ?? false;
+  const [confirming, setConfirming] = useState(false);
+
+  const startOver = () => {
+    reset(); // clears the save + reveal flags → app routes back to first-run
+    navigate("/", { replace: true });
+  };
 
   return (
     <div className="screen">
@@ -45,6 +53,27 @@ export function Settings() {
       </div>
 
       <div className="den-spacer" />
+
+      <div className="settings-danger">
+        {confirming ? (
+          <>
+            <p className="settings-danger__ask">
+              Start over? This clears your cats and progress and takes you back to
+              the beginning.
+            </p>
+            <button className="btn-danger" onClick={startOver}>
+              Yes, start over
+            </button>
+            <button className="btn-text" onClick={() => setConfirming(false)}>
+              Cancel
+            </button>
+          </>
+        ) : (
+          <button className="btn-outline" onClick={() => setConfirming(true)}>
+            Start over
+          </button>
+        )}
+      </div>
     </div>
   );
 }

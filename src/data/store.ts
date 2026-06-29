@@ -141,6 +141,13 @@ export function clearSave(): void {
   storage.remove(SAVE_KEY);
 }
 
+/** Wipe all app data — the save and the "seen cats" reveal flags. Used by the
+ *  Settings "start over", which returns the player to name selection. */
+export function resetAll(): void {
+  storage.remove(SAVE_KEY);
+  storage.remove(SEEN_KEY);
+}
+
 // ── Profile ──────────────────────────────────────────────────────────────────
 
 /** Create a brand-new save for a freshly named profile and persist it. */

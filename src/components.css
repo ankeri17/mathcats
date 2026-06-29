@@ -920,6 +920,52 @@ button.cat-card:active {
   margin-top: 2px;
 }
 
+/* ── Settings: start over ─────────────────────────────────────────────────── */
+.settings-danger {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+}
+.settings-danger__ask {
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 14px;
+  max-width: 300px;
+  margin: 0 0 var(--s-1);
+}
+.btn-outline {
+  width: 100%;
+  padding: 14px 24px;
+  border-radius: var(--r-pill);
+  border: 1.5px solid var(--hairline);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 15px;
+  transition: background var(--t-pad) var(--ease-standard);
+}
+.btn-outline:active {
+  background: var(--surface-sunk);
+}
+.btn-danger {
+  width: 100%;
+  padding: 16px 24px;
+  border-radius: var(--r-pill);
+  background: #7e8ca4; /* calm slate — clearly an action, never alarming */
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 16px;
+  box-shadow: var(--e-card);
+  transition: filter var(--t-pad) var(--ease-standard);
+}
+.btn-danger:active {
+  filter: brightness(0.97);
+}
+
 /* ── Challenge mode: countdown + speed streak + bonus ─────────────────────── */
 .challenge-bar-wrap {
   height: 6px;

@@ -99,7 +99,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const reset = useCallback(() => {
-    store.clearSave();
+    store.resetAll();
     setSave(null);
   }, []);
 
