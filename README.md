@@ -31,7 +31,15 @@ npm install
 npm run dev        # local dev server
 npm run build      # type-check (tsc -b) + production build to dist/
 npm run preview    # serve the production build
+npm test           # vitest — engine/data unit tests + pacing simulation
+npm run lint       # eslint (typescript + react-hooks rules)
 ```
+
+CI (GitHub Actions) runs lint → test → build on every push and PR — `main` is
+the Netlify deploy source, so nothing broken should land there. Fonts are
+self-hosted via `@fontsource` (latin subset): the app makes **zero third-party
+requests** and works fully offline. Sounds are synthesized with the Web Audio
+API (no assets, reward-only — there is deliberately no failure sound).
 
 Deploy: `netlify.toml` is configured (`npm run build` → `dist/`, with an SPA
 redirect). No environment variables, no backend.
@@ -46,7 +54,6 @@ src/
   engine/        Pure game logic — NO ui or storage imports.
     types.ts          Op, Fact, Problem, FactStat
     facts.ts          fact enumeration, stable keys ("7x8" / "56d7"), answer check
-    selector.ts       plain no-repeat picker (Phase 1; kept for reference)
     adaptiveSelector  Phase 2: Leitner-lite boxes + weighted selection, ~20%
                       due-review of mastered facts, no immediate repeats, mixed ×/÷
     progression.ts    Phase 2: the moving table "front", introduce/advance rules
