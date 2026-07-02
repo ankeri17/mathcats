@@ -8,8 +8,10 @@ import { CatStage, type CatReaction } from "../../cats/CatStage";
 import { findById } from "../../cats/roster";
 import { factsForTable, GLYPH } from "../../engine/facts";
 import type { Fact, FactStat } from "../../engine/types";
+import { catAccentStyle } from "../../cats/theme";
 import { catIdForTable, getSeenCats, markCatSeen } from "../../data/store";
 import { useApp } from "../../state/AppState";
+import { useSounds } from "../useSounds";
 import { PrimaryButton } from "../components/PrimaryButton";
 
 type TileState = "new" | "progress" | "mastered";
@@ -45,30 +47,35 @@ export function CatDetail() {
   const progress = save?.cats[progressId];
   const discovered = Boolean(progress?.unlocked);
 
-  const [mood, setMood] = useState<"idle" | "happy">("idle");
-  const [reaction, setReaction] = useState<CatReaction>(null);
+  const sounds = useSounds();
 
-  // Reveal once, the first time a freshly-discovered cat is opened.
+  // Reveal once, the first time a freshly-discovered cat is opened. The reveal
+  // pose is the INITIAL state (no setState-in-effect); the effect only handles
+  // the side effects: marking seen, the sound, and settling back to idle.
   const reveal = useMemo(
     () => discovered && cat != null && !getSeenCats().has(cat.id),
     [discovered, cat],
   );
+  const [mood, setMood] = useState<"idle" | "happy">(reveal ? "happy" : "idle");
+  const [reaction, setReaction] = useState<CatReaction>(reveal ? "correct" : null);
+
   useEffect(() => {
     if (cat && discovered) markCatSeen(cat.id);
-    if (reveal) {
-      setMood("happy");
-      setReaction("correct");
-      const t = setTimeout(() => {
-        setMood("idle");
-        setReaction(null);
-      }, 1400);
-      return () => clearTimeout(t);
-    }
+    if (!reveal) return;
+    sounds.discovery();
+    const t = setTimeout(() => {
+      setMood("idle");
+      setReaction(null);
+    }, 1400);
+    return () => clearTimeout(t);
+    // `sounds` is stable per mute-state; re-running the reveal on mute toggle
+    // would replay it, so it's intentionally not a dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cat, discovered, reveal]);
 
   if (!cat || !discovered) return <Navigate to="/cats" replace />;
 
-  const accentStyle = { ["--cat-accent" as string]: cat.accent } as React.CSSProperties;
+  const accentStyle = catAccentStyle(cat);
   const pct = progress?.masteryPct ?? 0;
   const mastered = Boolean(progress?.mastered);
 

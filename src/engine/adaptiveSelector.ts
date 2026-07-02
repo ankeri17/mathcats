@@ -99,10 +99,15 @@ export function selectNext(args: SelectArgs): { problem: Problem; state: Selecto
     primary = frontAny.length > 0 ? frontAny : pool;
   }
 
-  // Interleave: avoid the immediate repeat and a short recent window.
+  // Interleave: avoid the immediate repeat and a short recent window. If the
+  // primary set runs dry (e.g. one weak fact left in the front), widen to the
+  // whole pool rather than serve the same fact twice in a row — back-to-back
+  // repeats read as punishment. Only a single-fact pool may ever repeat.
   const blocked = new Set(state.recent.slice(-RECENT_BLOCK));
   let pickable = primary.filter((f) => f.key !== lastKey && !blocked.has(f.key));
   if (pickable.length === 0) pickable = primary.filter((f) => f.key !== lastKey);
+  if (pickable.length === 0) pickable = pool.filter((f) => f.key !== lastKey && !blocked.has(f.key));
+  if (pickable.length === 0) pickable = pool.filter((f) => f.key !== lastKey);
   if (pickable.length === 0) pickable = primary;
 
   const chosen = weightedPick(pickable, stats, front, rng);

@@ -18,6 +18,12 @@ export interface Profile {
   createdAt: string;
   settings: {
     inputMode: InputMode;
+    /**
+     * RESERVED — written at profile creation but not yet read anywhere.
+     * Practice scope is driven by `progress.introduced` (the progression
+     * engine), NOT this list. Kept for a future "parent picks tables" feature;
+     * editing it today changes nothing.
+     */
     activeTables: number[];
     /** Mute toggle. */
     muted?: boolean;
@@ -28,7 +34,8 @@ export interface Profile {
 
 export interface CatProgress {
   catId: string;
-  tableId: number;
+  /** The cat's table; null for milestone cats (div / all), matching the roster. */
+  tableId: number | null;
   unlocked: boolean;
   masteryPct: number;
   mastered: boolean;

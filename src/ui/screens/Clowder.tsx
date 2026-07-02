@@ -33,7 +33,6 @@ export function Clowder() {
     if (!save || tableCats.length === 0) return 0;
     const sum = tableCats.reduce((acc, c) => acc + (save.cats[catId(c)]?.masteryPct ?? 0), 0);
     return Math.round(sum / tableCats.length);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [save, tableCats]);
 
   const show = (cat: Cat) => {
@@ -64,7 +63,7 @@ export function Clowder() {
         <div>
           <h1 style={{ fontSize: 26 }}>My Cats</h1>
           <p className="muted" style={{ fontSize: 14, marginTop: 2 }}>
-            {discoveredCount} of 13 found
+            {discoveredCount} of {roster.length || 13} found
           </p>
         </div>
         <MasteryRing pct={overallPct} size={52} stroke={5} />

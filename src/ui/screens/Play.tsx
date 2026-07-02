@@ -1,215 +1,50 @@
-// Play — the core loop, now driven by the Phase 2 adaptive selector. The
-// companion cat follows the table currently in focus; mastering a table or
-// discovering a new cat fires a contained celebration beat. Still kind: no
-// score, no penalty, no shaming. Supports an optional single-table focus mode.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+// Play — the hero screen. Purely presentational: all session logic lives in
+// usePlaySession. Three kind states: neutral (await), correct (delight beat),
+// gentle retry (never shaming). No score, no penalty, no punitive timer.
+import { useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { CatStage, type CatReaction } from "../../cats/CatStage";
+import { CatStage } from "../../cats/CatStage";
 import { findByTable, findById } from "../../cats/roster";
-import { buildFactPool, factsForTable, isCorrect } from "../../engine/facts";
-import {
-  initSelector,
-  selectNext,
-  type SelectorState,
-} from "../../engine/adaptiveSelector";
-import { computeFront, frontLead } from "../../engine/progression";
-import type { Problem } from "../../engine/types";
-import { CHALLENGE_SECONDS, SESSION_LENGTH, STARTER_TABLE } from "../../config";
+import { catAccentStyle } from "../../cats/theme";
+import { CHALLENGE_SECONDS, SESSION_LENGTH } from "../../config";
 import { useApp } from "../../state/AppState";
 import { ProblemDisplay, type ProblemState } from "../components/ProblemDisplay";
 import { NumberPad } from "../components/NumberPad";
 import { SessionDots } from "../components/SessionDots";
-import {
-  DiscoveryOverlay,
-  type DiscoveryKind,
-} from "../components/DiscoveryOverlay";
-
-type Phase = "await" | "correct" | "reinforce";
-interface PendingDiscovery {
-  catId: string;
-  kind: DiscoveryKind;
-}
-
-function performanceNow(): number {
-  return typeof performance !== "undefined" ? performance.now() : Date.now();
-}
+import { DiscoveryOverlay } from "../components/DiscoveryOverlay";
+import { usePlaySession } from "./usePlaySession";
 
 export function Play() {
-  const { save, roster, recordAttempt, recordSession, setMuted } = useApp();
+  const { save, roster, setMuted } = useApp();
   const navigate = useNavigate();
   const location = useLocation();
-  const focusTable = (location.state as { focusTable?: number } | null)?.focusTable ?? null;
+  const focusTable =
+    (location.state as { focusTable?: number } | null)?.focusTable ?? null;
 
-  const [problem, setProblem] = useState<Problem | null>(null);
-  const [index, setIndex] = useState(0); // problems completed
-  const [entry, setEntry] = useState("");
-  const [phase, setPhase] = useState<Phase>("await");
-  const [reaction, setReaction] = useState<CatReaction>(null);
-  const [justFilled, setJustFilled] = useState(false);
-  const [discovery, setDiscovery] = useState<PendingDiscovery | null>(null);
-
-  // Challenge mode (opt-in, reward-only): a calm per-fact timer that only ever
-  // adds a bonus. Running out of time penalizes nothing — play continues untimed.
-  const challenge = save?.profile.settings.challengeMode ?? false;
-  const [timedOut, setTimedOut] = useState(false);
-  const [speedStreak, setSpeedStreak] = useState(0);
-  const [bonus, setBonus] = useState(false);
-  const challengeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Latest save without stale closures (introduced tables grow mid-session).
-  const saveRef = useRef(save);
-  saveRef.current = save;
-
-  const selRef = useRef<SelectorState>(initSelector());
-  const startedAt = useRef(new Date().toISOString());
-  const shownAt = useRef<number>(performanceNow());
-  const correctCount = useRef(0);
-  const pendingRef = useRef<PendingDiscovery[]>([]);
-  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const s = usePlaySession(focusTable);
 
   const muted = save?.profile.settings.muted ?? false;
-
-  // The companion cat follows the table in focus — this is what makes the cat
-  // match the practice (the Phase 1 mismatch is gone).
-  const displayTable = focusTable ?? (save ? frontLead(save.progress.introduced, save.facts) : STARTER_TABLE);
   const companion = useMemo(
-    () => findByTable(roster, displayTable) ?? null,
-    [roster, displayTable],
+    () => findByTable(roster, s.companionTable) ?? null,
+    [roster, s.companionTable],
   );
   const catName = companion?.shortName ?? "Your cat";
-  const accentStyle = companion
-    ? ({ ["--cat-accent" as string]: companion.accent } as React.CSSProperties)
-    : undefined;
+  const accentStyle = catAccentStyle(companion);
 
-  /** (Re)start the challenge countdown for a freshly shown problem. */
-  const armChallenge = useCallback(() => {
-    if (challengeTimer.current) clearTimeout(challengeTimer.current);
-    setTimedOut(false);
-    setBonus(false);
-    const on = saveRef.current?.profile.settings.challengeMode ?? false;
-    if (on) {
-      challengeTimer.current = setTimeout(() => setTimedOut(true), CHALLENGE_SECONDS * 1000);
-    }
-  }, []);
-
-  /** Build the selection inputs from the freshest save (or the focus table). */
-  const pickNext = useCallback((): Problem => {
-    const s = saveRef.current!;
-    const pool = focusTable != null ? factsForTable(focusTable) : buildFactPool(s.progress.introduced);
-    const front = new Set(focusTable != null ? [focusTable] : computeFront(s.progress.introduced, s.facts));
-    const { problem: next, state } = selectNext({ pool, front, stats: s.facts, state: selRef.current });
-    selRef.current = state;
-    return next;
-  }, [focusTable]);
-
-  // Seed the first problem once.
-  useEffect(() => {
-    if (!saveRef.current) return;
-    setProblem(pickNext());
-    shownAt.current = performanceNow();
-    armChallenge();
-    return () => {
-      if (advanceTimer.current) clearTimeout(advanceTimer.current);
-      if (challengeTimer.current) clearTimeout(challengeTimer.current);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const goNext = useCallback(() => {
-    setDiscovery(null);
-    const completed = index + 1;
-    if (completed >= SESSION_LENGTH) {
-      recordSession({
-        startedAt: startedAt.current,
-        endedAt: new Date().toISOString(),
-        attempted: SESSION_LENGTH,
-        correct: correctCount.current,
-        ...(focusTable != null ? { focusTable } : {}),
-      });
-      navigate("/summary", {
-        replace: true,
-        state: { attempted: SESSION_LENGTH, correct: correctCount.current },
-      });
-      return;
-    }
-    setProblem(pickNext());
-    setIndex(completed);
-    setEntry("");
-    setPhase("await");
-    setReaction(null);
-    setJustFilled(false);
-    shownAt.current = performanceNow();
-    armChallenge();
-  }, [index, navigate, pickNext, recordSession, focusTable, armChallenge]);
-
-  /** Drain any queued discovery beats before advancing to the next problem. */
-  const advance = useCallback(() => {
-    const ev = pendingRef.current.shift();
-    if (ev) setDiscovery(ev);
-    else goNext();
-  }, [goNext]);
-
-  const submit = useCallback(() => {
-    if (!problem || entry.length === 0) return;
-    const value = parseInt(entry, 10);
-
-    if (phase === "reinforce") {
-      // Reinforcement: only the shown, correct answer advances. No new record.
-      if (isCorrect(problem.fact, value)) advance();
-      else setEntry("");
-      return;
-    }
-
-    // First attempt — the recorded one. Stop the challenge countdown either way.
-    const beatClock = challenge && !timedOut;
-    if (challengeTimer.current) clearTimeout(challengeTimer.current);
-
-    const ms = Math.round(performanceNow() - shownAt.current);
-    const right = isCorrect(problem.fact, value);
-    const { events } = recordAttempt({ fact: problem.fact, correct: right, ms, now: new Date().toISOString() });
-
-    // Queue any discovery / level-up beats this attempt produced.
-    pendingRef.current = [
-      ...events.newCats.map((catId) => ({ catId, kind: "found" as const })),
-      ...events.masteredCats.map((catId) => ({ catId, kind: "mastered" as const })),
-    ];
-
-    if (right) {
-      correctCount.current += 1;
-      if (challenge) {
-        // Reward only: in-time grows the speed streak; out-of-time just resets
-        // the bonus — never a penalty.
-        if (beatClock) {
-          setSpeedStreak((s) => s + 1);
-          setBonus(true);
-        } else {
-          setSpeedStreak(0);
-        }
-      }
-      setPhase("correct");
-      setReaction("correct");
-      setJustFilled(true);
-      advanceTimer.current = setTimeout(advance, 1050);
-    } else {
-      if (challenge) setSpeedStreak(0);
-      setPhase("reinforce");
-      setReaction("incorrect");
-      setEntry("");
-    }
-  }, [advance, challenge, timedOut, entry, phase, problem, recordAttempt]);
-
-  if (!problem) {
+  if (!s.problem) {
     return (
       <div className="screen screen--play" style={accentStyle}>
-        <p className="muted" style={{ margin: "auto" }}>Getting your set ready…</p>
+        <p className="muted" style={{ margin: "auto" }}>
+          Getting your set ready…
+        </p>
       </div>
     );
   }
 
   const problemState: ProblemState =
-    phase === "correct" ? "correct" : phase === "reinforce" ? "retry" : "neutral";
-  const catMood = phase === "correct" ? "happy" : "idle";
-  const padEnabled = phase !== "correct" && !discovery;
+    s.phase === "correct" ? "correct" : s.phase === "reinforce" ? "retry" : "neutral";
+  const catMood = s.phase === "correct" ? "happy" : "idle";
+  const padEnabled = s.phase !== "correct" && !s.discovery;
 
   return (
     <div className="screen screen--play" style={accentStyle}>
@@ -217,7 +52,7 @@ export function Play() {
         <button className="icon-btn" aria-label="Back to the den" onClick={() => navigate("/")}>
           ‹
         </button>
-        <SessionDots total={SESSION_LENGTH} done={index} justFilled={justFilled} />
+        <SessionDots total={SESSION_LENGTH} done={s.index} justFilled={s.justFilled} />
         <button
           className="icon-btn"
           aria-label={muted ? "Unmute" : "Mute"}
@@ -233,56 +68,56 @@ export function Play() {
         </p>
       )}
 
-      {challenge && (
+      {s.challenge && (
         <div className="challenge-bar-wrap" aria-hidden="true">
-          {phase === "await" && !timedOut && (
+          {s.phase === "await" && !s.timedOut && (
             <div
-              key={index}
+              key={s.index}
               className="challenge-bar"
               style={{ animationDuration: `${CHALLENGE_SECONDS}s` }}
             />
           )}
         </div>
       )}
-      {challenge && speedStreak > 0 && (
+      {s.challenge && s.speedStreak > 0 && (
         <div className="speed-streak" role="status">
-          ⚡ Speed streak {speedStreak}
+          ⚡ Speed streak {s.speedStreak}
         </div>
       )}
 
       <div className="play-body">
-        <CatStage cat={companion} mood={catMood} reaction={reaction} size={116} />
+        <CatStage cat={companion} mood={catMood} reaction={s.reaction} size={116} />
 
-        {phase === "await" && <p className="cat-caption">{catName} is watching</p>}
-        {phase === "correct" && bonus && (
+        {s.phase === "await" && <p className="cat-caption">{catName} is watching</p>}
+        {s.phase === "correct" && s.bonus && (
           <div className="banner banner--bonus">⚡ Speedy! {catName}&apos;s thrilled.</div>
         )}
-        {phase === "correct" && !bonus && (
+        {s.phase === "correct" && !s.bonus && (
           <div className="banner banner--correct">Nice. {catName}&apos;s impressed.</div>
         )}
-        {phase === "reinforce" && (
+        {s.phase === "reinforce" && (
           <div className="banner banner--retry">
-            Not quite — {problem.fact.a} {problem.glyph} {problem.fact.b} is{" "}
-            <span className="ans">{problem.fact.answer}</span>. Try it once.
+            Not quite — {s.problem.fact.a} {s.problem.glyph} {s.problem.fact.b} is{" "}
+            <span className="ans">{s.problem.fact.answer}</span>. Try it once.
           </div>
         )}
 
-        <ProblemDisplay problem={problem} state={problemState} />
+        <ProblemDisplay problem={s.problem} state={problemState} />
 
         <div
-          className={`answer ${phase === "correct" ? "answer--correct" : ""}`}
+          className={`answer ${s.phase === "correct" ? "answer--correct" : ""}`}
           aria-live="polite"
         >
-          {entry === "" ? (
-            phase === "correct" ? (
+          {s.entry === "" ? (
+            s.phase === "correct" ? (
               ""
             ) : (
               <span className="caret" />
             )
           ) : (
             <span>
-              {entry}
-              {phase === "correct" ? " ✓" : <span className="caret" />}
+              {s.entry}
+              {s.phase === "correct" ? " ✓" : <span className="caret" />}
             </span>
           )}
         </div>
@@ -291,18 +126,18 @@ export function Play() {
       <div className="play-foot">
         <NumberPad
           enabled={padEnabled}
-          canEnter={entry.length > 0}
-          onDigit={(d) => setEntry((e) => (e.length < 4 ? e + d : e))}
-          onBackspace={() => setEntry((e) => e.slice(0, -1))}
-          onEnter={submit}
+          canEnter={s.entry.length > 0}
+          onDigit={s.onDigit}
+          onBackspace={s.onBackspace}
+          onEnter={s.submit}
         />
       </div>
 
-      {discovery && (
+      {s.discovery && (
         <DiscoveryOverlay
-          cat={findById(roster, discovery.catId) ?? null}
-          kind={discovery.kind}
-          onContinue={advance}
+          cat={findById(roster, s.discovery.catId) ?? null}
+          kind={s.discovery.kind}
+          onContinue={s.continueFromDiscovery}
         />
       )}
     </div>

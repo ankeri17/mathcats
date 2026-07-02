@@ -2,6 +2,7 @@
 // or masters its table. Warm and brief; the bloom respects reduced motion.
 import { CatStage } from "../../cats/CatStage";
 import type { Cat } from "../../cats/roster";
+import { catAccentStyle } from "../../cats/theme";
 import { PrimaryButton } from "./PrimaryButton";
 
 export type DiscoveryKind = "found" | "mastered";
@@ -13,9 +14,7 @@ interface Props {
 }
 
 export function DiscoveryOverlay({ cat, kind, onContinue }: Props) {
-  const accentStyle = cat
-    ? ({ ["--cat-accent" as string]: cat.accent } as React.CSSProperties)
-    : undefined;
+  const accentStyle = catAccentStyle(cat);
 
   const name = cat?.shortName ?? "A new cat";
   const isMastered = kind === "mastered";

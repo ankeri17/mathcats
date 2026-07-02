@@ -3,6 +3,7 @@
 // corner mastery ring), mastered (prized frame + ★ Mastered). Themed per-cat.
 import { CatStage } from "../../cats/CatStage";
 import type { Cat } from "../../cats/roster";
+import { catAccentStyle } from "../../cats/theme";
 import type { CatProgress } from "../../data/schema";
 import { MasteryRing } from "./MasteryRing";
 
@@ -23,7 +24,7 @@ export function CatCard({ cat, progress, onOpen }: Props) {
       : "All-stars"
     : `${cat.tableId}× table`;
 
-  const style = { ["--cat-accent" as string]: cat.accent } as React.CSSProperties;
+  const style = catAccentStyle(cat);
 
   if (!discovered) {
     return (

@@ -77,12 +77,14 @@ function deriveCats(
     };
   }
 
-  // Milestone: division cat.
+  // Milestone: division cat. (Milestone cats carry tableId null, matching the
+  // roster; cats are re-derived on every load, so any legacy 0-sentinels are
+  // rewritten automatically — no migration needed.)
   const div = divisionMilestone(facts);
   if (div.unlocked) {
     cats[DIV_CAT_ID] = {
       catId: DIV_CAT_ID,
-      tableId: 0,
+      tableId: null,
       unlocked: true,
       masteryPct: div.masteryPct,
       mastered: div.mastered,
@@ -96,7 +98,7 @@ function deriveCats(
   if (all.unlocked) {
     cats[ALL_CAT_ID] = {
       catId: ALL_CAT_ID,
-      tableId: 0,
+      tableId: null,
       unlocked: true,
       masteryPct: all.masteryPct,
       mastered: all.mastered,

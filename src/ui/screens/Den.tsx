@@ -4,10 +4,9 @@
 import { useNavigate } from "react-router-dom";
 import { CatStage } from "../../cats/CatStage";
 import { findById } from "../../cats/roster";
+import { catAccentStyle } from "../../cats/theme";
 import { catIdForTable } from "../../data/store";
 import { useApp } from "../../state/AppState";
-
-const TOTAL_CATS = 13; // 11 table-cats + 2 milestone cats
 
 function greeting(hour: number): string {
   if (hour < 12) return "Good morning";
@@ -20,6 +19,9 @@ export function Den() {
   const navigate = useNavigate();
   const name = save?.profile.name ?? "friend";
   const sessions = save?.sessions.length ?? 0;
+  // Derived from the roster so a roster change can't skew the count; 13 is only
+  // the fallback while the placeholder cat is in use.
+  const totalCats = roster.length || 13;
 
   // Discovered cats, in introduction order, then milestone cats.
   const order = [
@@ -30,7 +32,7 @@ export function Den() {
   const discovered = order
     .filter((id) => save?.cats[id])
     .map((id) => ({ progress: save!.cats[id], cat: findById(roster, id) }));
-  const remaining = TOTAL_CATS - discovered.length;
+  const remaining = totalCats - discovered.length;
 
   const todayLine =
     sessions === 0
@@ -67,17 +69,16 @@ export function Den() {
       <div className="section-head">
         <h3>Your cats</h3>
         <span className="count">
-          {discovered.length} of {TOTAL_CATS}
+          {discovered.length} of {totalCats}
         </span>
       </div>
       <div className="clowder-peek">
         {discovered.map(({ progress, cat }) => {
-          const accent = cat?.accent ?? "var(--primary)";
           return (
             <div
               key={progress.catId}
               className="peek-card starter"
-              style={{ ["--cat-accent" as string]: accent } as React.CSSProperties}
+              style={catAccentStyle(cat)}
             >
               <CatStage cat={cat ?? null} mood="idle" size={72} />
               <div className="nm">{cat?.shortName ?? "Cat"}</div>

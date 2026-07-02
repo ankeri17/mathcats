@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { CatStage } from "../../cats/CatStage";
+import { catAccentStyle } from "../../cats/theme";
 import { useApp } from "../../state/AppState";
 import { PrimaryButton } from "../components/PrimaryButton";
 
@@ -17,9 +18,7 @@ export function FirstRun() {
   const [name, setName] = useState<string | null>(null);
   const [showMore, setShowMore] = useState(false);
 
-  const accentStyle = starterCat
-    ? ({ ["--cat-accent" as string]: starterCat.accent } as React.CSSProperties)
-    : undefined;
+  const accentStyle = catAccentStyle(starterCat);
 
   if (step === 0) {
     const names = showMore ? [...PRESETS, ...MORE] : PRESETS;

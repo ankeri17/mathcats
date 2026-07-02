@@ -41,41 +41,39 @@ export interface InlineSvgState {
   loading: boolean;
 }
 
+/**
+ * The hook derives its result from the module cache during render; the effect
+ * only kicks off the async fetch and records completion (never synchronous
+ * setState, per the react-hooks effect rules).
+ */
 export function useInlineSvg(url: string | null): InlineSvgState {
-  const [state, setState] = useState<InlineSvgState>(() => ({
-    markup: url ? svgCache.get(url) ?? null : null,
-    error: false,
-    loading: Boolean(url) && !svgCache.has(url ?? ""),
-  }));
+  // Tracks the outcome of the most recent fetch, keyed by URL so a stale
+  // result for a previous cat can never bleed into the current one.
+  const [fetched, setFetched] = useState<{ url: string; error: boolean } | null>(null);
 
   useEffect(() => {
-    if (!url) {
-      setState({ markup: null, error: false, loading: false });
-      return;
-    }
-
-    const cached = svgCache.get(url);
-    if (cached !== undefined) {
-      setState({ markup: cached, error: false, loading: false });
-      return;
-    }
-
+    if (!url || svgCache.has(url)) return;
     let active = true;
-    setState((s) => ({ ...s, loading: true, error: false }));
     fetchSvg(url)
-      .then((markup) => {
-        if (active) setState({ markup, error: false, loading: false });
+      .then(() => {
+        if (active) setFetched({ url, error: false });
       })
       .catch(() => {
-        if (active) setState({ markup: null, error: true, loading: false });
+        if (active) setFetched({ url, error: true });
       });
-
     return () => {
       active = false;
     };
   }, [url]);
 
-  return state;
+  if (!url) return { markup: null, error: false, loading: false };
+
+  const cached = svgCache.get(url);
+  if (cached !== undefined) return { markup: cached, error: false, loading: false };
+  if (fetched?.url === url && fetched.error) {
+    return { markup: null, error: true, loading: false };
+  }
+  return { markup: null, error: false, loading: true };
 }
 
 /** Prime the cache for art we know we'll need (e.g. the happy state). */
